@@ -121,11 +121,15 @@ class Expert:
 Predictor = Ngram  # anything with .name, .observe(me, opp), .predict(me, opp)
 
 
-def default_predictors(max_depth: int = 5, decays: Sequence[float] = (1.0, 0.8)) -> list:
-    """The standard ensemble: gotcha, frequency, and n-grams over every source/target/decay."""
+def default_predictors(
+    max_depth: int = 5, decays: Sequence[float] = (1.0, 0.8), seed: int | None = None
+) -> list:
+    """The standard ensemble: gotcha, frequency, and n-grams over every source/target/decay.
+
+    `seed` fixes gotcha's probability-matching draws."""
     from .gotcha import gotcha_predictors
 
-    preds: list = gotcha_predictors()
+    preds: list = gotcha_predictors(seed=seed)
     for decay in decays:
         for target in ("opp", "me"):
             preds.append(Ngram(0, "opp", target, decay))

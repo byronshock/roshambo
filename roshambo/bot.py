@@ -27,7 +27,7 @@ class Bot:
     ):
         self.rng = random.Random(seed)
         self.epsilon = epsilon
-        preds = list(predictors) if predictors is not None else default_predictors()
+        preds = list(predictors) if predictors is not None else default_predictors(seed=seed)
         self.experts = [Expert(p, k, score_decays) for p in preds for k in range(3)]
         self.me: list[int] = []
         self.opp: list[int] = []
