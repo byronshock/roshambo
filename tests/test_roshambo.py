@@ -1,4 +1,5 @@
 import random
+import statistics
 import unittest
 
 from roshambo import Bot, beats, outcome, parse
@@ -7,6 +8,7 @@ from roshambo.core import rotate
 from roshambo.gotcha import GotchaTable, gotcha_predictors
 from roshambo.opponents import ALL
 from roshambo.simulate import play_match, summarize
+from roshambo import tournament
 
 
 class CoreTests(unittest.TestCase):
@@ -166,3 +168,23 @@ class ClassicBotTests(unittest.TestCase):
         for name in ("iocaine", "greenberg"):
             bot = play_match(ALL[name](), 60, seed=2)
             self.assertEqual(bot.rounds, 60)
+
+
+class TournamentTests(unittest.TestCase):
+    def test_crosstable_is_antisymmetric_and_ranks(self):
+        names = ("bot", "wsls", "uniform")
+        results = tournament.crosstable(names, rounds=150, seeds=2)
+        for a in names:
+            for b in names:
+                if a != b:
+                    self.assertEqual(len(results[(a, b)]), 2)
+                    self.assertEqual(results[(a, b)], [-m for m in results[(b, a)]])
+        self.assertGreater(statistics.fmean(results[("bot", "wsls")]), 0.8)
+        text = tournament.report(names, results, 150, 2)
+        self.assertTrue(text.splitlines()[3].startswith("bot"))  # ranked first
+
+    def test_every_entrant_constructs_and_plays(self):
+        for name, make in tournament.ENTRANTS.items():
+            with self.subTest(name):
+                m = tournament.play(make(1), tournament.ENTRANTS["uniform"](2), 20, seed=0)
+                self.assertTrue(-1 <= m <= 1)

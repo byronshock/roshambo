@@ -37,6 +37,22 @@ The ports were checked move for move against the C originals; rerun that
 check with `python3 tools/verify_classic/verify.py` (needs gcc and network
 access to fetch the C sources, which are not redistributed here).
 
+## Tournament
+
+```bash
+python3 -m roshambo --tournament --rounds 1000 --seeds 5
+```
+
+Round-robin crosstable between entrants: the full bot, gotcha alone, the
+n-gram experts alone, Iocaine Powder, Greenberg, and scripted baselines.
+Each cell is the row entrant's mean margin over the column entrant in
+percentage points, with an approximate 95% interval across seeds, and
+rows are ranked by average margin. Name entrants to pick a subset:
+
+```bash
+python3 -m roshambo --tournament bot iocaine greenberg --seeds 10
+```
+
 ## Play it
 
 ```bash
