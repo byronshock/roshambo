@@ -32,7 +32,8 @@ def play(bot: Bot) -> None:
         print(f"   bot: {NAMES[mine]:8} -> {verdict}{why}")
         print(f"   score  bot {bot.wins}  you {bot.losses}  ties {bot.ties}")
         if gotcha:
-            print(f"   gotcha {gotcha.history}: {' '.join(gotcha.suffixes())}")
+            entries = " ".join(f"{sfx}({r},{p},{s})" for sfx, (r, p, s) in gotcha.counts())
+            print(f"   gotcha {gotcha.history}: {entries}")
     if bot.rounds:
         n = bot.rounds
         print(f"\n{n} rounds: bot {bot.wins} ({bot.wins/n:.0%})  you {bot.losses} ({bot.losses/n:.0%})  ties {bot.ties}")

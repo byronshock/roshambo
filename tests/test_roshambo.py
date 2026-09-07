@@ -73,5 +73,32 @@ class GotchaTests(unittest.TestCase):
         self.assertEqual(g.rounds, 4)
         self.assertEqual(g.suffixes(), ["ss", "rrss", "rprrss", "psrprrss"])
 
+    def test_table_counts_what_followed_each_suffix(self):
+        g = Gotcha()
+        me, opp = [], []
+        # rounds: rs, rp, rs, rp  -> after "rs" the opponent played p twice
+        for mine, theirs in [(0, 2), (0, 1), (0, 2), (0, 1)]:
+            me.append(mine)
+            opp.append(theirs)
+            g.observe(me, opp)
+        self.assertEqual(g.table["rs"], [0, 2, 0])
+        self.assertEqual(g.table["rp"], [0, 0, 1])
+        self.assertEqual(g.table["rsrp"], [0, 0, 1])
+        self.assertEqual(g.table["rprs"], [0, 1, 0])
+        self.assertEqual(g.table["rsrprs"], [0, 1, 0])
+        self.assertNotIn("rsrprsrp", g.table)  # the full history has no follower yet
+        self.assertEqual(g.counts()[0], ("rp", [0, 0, 1]))
+        self.assertEqual(g.counts()[-1], ("rsrprsrp", [0, 0, 0]))
+
+    def test_max_rounds_caps_suffix_length(self):
+        g = Gotcha(max_rounds=2)
+        me, opp = [0, 0, 0, 0], [2, 1, 2, 1]
+        for i in range(1, 5):
+            g.observe(me[:i], opp[:i])
+        self.assertEqual(g.suffixes(), ["rp", "rsrp"])
+        self.assertEqual(g.table["rprs"], [0, 1, 0])
+        self.assertNotIn("rsrprs", g.table)
+
     def test_empty(self):
         self.assertEqual(Gotcha().suffixes(), [])
+        self.assertEqual(Gotcha().counts(), [])
