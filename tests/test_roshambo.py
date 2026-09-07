@@ -121,6 +121,29 @@ class GotchaTests(unittest.TestCase):
         self.assertEqual(best_response([4, 0, 3]), R)   # rock beats scissors, ties rock, never loses
         self.assertEqual(best_response([1, 1, 1]), R)   # all equal: lowest index
 
+    def test_estimate_backs_off_to_shorter_depth(self):
+        t = self.played([(0, 1), (0, 1), (0, 1)], pseudo_count=1.0)  # opponent: paper x3
+        self.assertIsNone(t.estimate(4))  # game too short
+        e0 = t.estimate(0)  # (0,3,0) smoothed toward uniform with weight 1
+        self.assertEqual([round(x, 4) for x in e0], [0.0833, 0.8333, 0.0833])
+        self.assertAlmostEqual(sum(e0), 1.0)
+        # "rp" was followed by paper twice, smoothed toward e0
+        self.assertEqual([round(x, 4) for x in t.estimate(1)], [0.0278, 0.9444, 0.0278])
+        # "rprp" was followed by paper once, smoothed toward depth 1
+        e2 = t.estimate(2)
+        self.assertEqual([round(x, 4) for x in e2], [0.0139, 0.9722, 0.0139])
+        # "rprprp" has never been followed: pure prior, so identical to depth 2
+        self.assertEqual(t.estimate(3), e2)
+        self.assertIsNone(GotchaTable().estimate(0))
+
+    def test_smoothing_breaks_ties_from_context(self):
+        # Overall the opponent leans paper, but after "rs" it's one rock, one scissors.
+        t = self.played([(0, 1)] * 8 + [(0, 2), (0, 0), (0, 2), (0, 2)], pseudo_count=4.0)
+        self.assertEqual(t.table["rs"], [1, 0, 1])
+        self.assertEqual(t.table[""], [1, 8, 3])
+        self.assertEqual(best_response(t.table["rs"]), 0)  # raw counts: tie, falls to rock
+        self.assertEqual(best_response(t.estimate(1)), 2)  # prior lean to paper: scissors
+
     def test_depth_predictors_share_one_table(self):
         preds = gotcha_predictors(max_rounds=3)
         self.assertEqual([p.name for p in preds], ["gotcha0", "gotcha1", "gotcha2", "gotcha3"])
@@ -135,4 +158,4 @@ class GotchaTests(unittest.TestCase):
         self.assertEqual(preds[0].response(), 2)   # best response is scissors
         self.assertEqual(preds[0].predict(me, opp), 1)  # expressed as "they play paper"
         self.assertEqual(preds[1].response(), 2)   # "rp" seen twice, followed by paper
-        self.assertIsNone(preds[3].response())     # "rprprp" has never been followed
+        self.assertEqual(preds[3].response(), 2)   # "rprprp" unseen: inherits depth 2's belief

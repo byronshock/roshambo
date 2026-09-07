@@ -35,8 +35,8 @@ def play(bot: Bot) -> None:
         print(f"   score  bot {bot.wins}  you {bot.losses}  ties {bot.ties}")
         if table:
             entries = []
-            for sfx, counts in table.counts():
-                br = best_response(counts)
+            for depth, (sfx, counts) in enumerate(table.counts()):
+                br = best_response(table.estimate(depth))
                 entries.append(f"{sfx}({','.join(map(str, counts))})>{SYMBOLS[br] if br is not None else '-'}")
             print(f"   gotcha {table.history}: {' '.join(entries)}")
     if bot.rounds:

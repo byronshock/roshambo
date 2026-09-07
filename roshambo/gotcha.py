@@ -6,9 +6,16 @@ opponent scissors is "ps". Every whole-round suffix of that string (the
 empty suffix included) is a key in a table whose value counts what the
 opponent played immediately after that suffix, every time it occurred.
 
-Each depth is its own predictor. It reads the counts for the suffix of
-that many rounds, treats them as an empirical distribution over the
-opponent's next move, and plays the best response to that distribution.
+Each depth is its own predictor. It estimates the opponent's next-move
+distribution from the counts for the suffix of that many rounds, smoothed
+toward the next shorter depth's estimate (and uniform at depth 0), and
+plays the best response to that estimate:
+
+    estimate_k = (counts_k + a * estimate_{k-1}) / (total_k + a)
+
+where the pseudo-count `a` is how many real observations it takes for the
+data to outweigh the prior. A context seen once is mostly its parent's
+belief; one seen fifty times is nearly its own counts.
 """
 from __future__ import annotations
 
@@ -38,8 +45,9 @@ class GotchaTable:
     original design, but costs time and memory quadratic in game length;
     contexts longer than a dozen rounds never recur in practice."""
 
-    def __init__(self, max_rounds: int | None = 10) -> None:
+    def __init__(self, max_rounds: int | None = 10, pseudo_count: float = 2.0) -> None:
         self.max_rounds = max_rounds
+        self.pseudo_count = pseudo_count
         self.history = ""
         self.table: dict[str, list[int]] = {}  # suffix -> [rock, paper, scissors] counts
 
@@ -69,6 +77,21 @@ class GotchaTable:
         longest = self.rounds if self.max_rounds is None else min(self.rounds, self.max_rounds)
         return [self.suffix(k) for k in range(longest + 1)]
 
+    def estimate(self, depth: int) -> list[float] | None:
+        """Smoothed estimate of the opponent's next-move distribution at this depth.
+
+        None when the game is shorter than `depth` rounds or nothing has
+        been observed at all."""
+        if self.rounds == 0:
+            return None
+        sfx = self.suffix(depth)
+        if sfx is None:
+            return None
+        prior = [1 / 3] * 3 if depth == 0 else self.estimate(depth - 1)
+        counts = self.table.get(sfx, [0, 0, 0])
+        a, total = self.pseudo_count, sum(counts)
+        return [(c + a * q) / (total + a) for c, q in zip(counts, prior)]
+
     def counts(self) -> list[tuple[str, list[int]]]:
         """Each current suffix with its table entry, shortest first. Unseen ones get zeros."""
         return [(sfx, self.table.get(sfx, [0, 0, 0])) for sfx in self.suffixes()]
@@ -88,11 +111,9 @@ class Gotcha:
         self.table.observe(me, opp)
 
     def response(self) -> int | None:
-        """Best response to the empirical distribution at this depth, or None."""
-        sfx = self.table.suffix(self.depth)
-        if sfx is None or sfx not in self.table.table:
-            return None
-        return best_response(self.table.table[sfx])
+        """Best response to the smoothed estimate at this depth, or None."""
+        est = self.table.estimate(self.depth)
+        return None if est is None else best_response(est)
 
     def predict(self, me: Sequence[int], opp: Sequence[int]) -> int | None:
         """Expressed as a predicted opponent move: the one our best response beats,
@@ -101,7 +122,7 @@ class Gotcha:
         return None if r is None else beats(beats(r))
 
 
-def gotcha_predictors(max_rounds: int = 10) -> list[Gotcha]:
+def gotcha_predictors(max_rounds: int = 10, pseudo_count: float = 2.0) -> list[Gotcha]:
     """One predictor per depth, all sharing one table."""
-    table = GotchaTable(max_rounds)
+    table = GotchaTable(max_rounds, pseudo_count)
     return [Gotcha(table, k) for k in range(max_rounds + 1)]
