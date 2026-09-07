@@ -3,7 +3,7 @@ import unittest
 
 from roshambo import Bot, beats, outcome, parse
 from roshambo.core import rotate
-from roshambo.gotcha import Gotcha
+from roshambo.gotcha import Gotcha, GotchaTable, best_response, gotcha_predictors
 from roshambo.opponents import ALL
 from roshambo.simulate import play_match, summarize
 
@@ -62,45 +62,77 @@ if __name__ == "__main__":
 
 
 class GotchaTests(unittest.TestCase):
-    def test_history_and_suffixes(self):
-        g = Gotcha()
+    @staticmethod
+    def played(rounds, **kw):
+        t = GotchaTable(**kw)
         me, opp = [], []
-        for mine, theirs in [(1, 2), (0, 1), (0, 0), (2, 2)]:
+        for mine, theirs in rounds:
             me.append(mine)
             opp.append(theirs)
-            g.observe(me, opp)
-        self.assertEqual(g.history, "psrprrss")
-        self.assertEqual(g.rounds, 4)
-        self.assertEqual(g.suffixes(), ["", "ss", "rrss", "rprrss", "psrprrss"])
+            t.observe(me, opp)
+        return t
+
+    def test_history_and_suffixes(self):
+        t = self.played([(1, 2), (0, 1), (0, 0), (2, 2)])
+        self.assertEqual(t.history, "psrprrss")
+        self.assertEqual(t.rounds, 4)
+        self.assertEqual(t.suffixes(), ["", "ss", "rrss", "rprrss", "psrprrss"])
+        self.assertIsNone(t.suffix(5))
 
     def test_table_counts_what_followed_each_suffix(self):
-        g = Gotcha()
-        me, opp = [], []
         # rounds: rs, rp, rs, rp  -> after "rs" the opponent played p twice
-        for mine, theirs in [(0, 2), (0, 1), (0, 2), (0, 1)]:
-            me.append(mine)
-            opp.append(theirs)
-            g.observe(me, opp)
-        self.assertEqual(g.table[""], [0, 2, 2])
-        self.assertEqual(g.table["rs"], [0, 2, 0])
-        self.assertEqual(g.table["rp"], [0, 0, 1])
-        self.assertEqual(g.table["rsrp"], [0, 0, 1])
-        self.assertEqual(g.table["rprs"], [0, 1, 0])
-        self.assertEqual(g.table["rsrprs"], [0, 1, 0])
-        self.assertNotIn("rsrprsrp", g.table)  # the full history has no follower yet
-        self.assertEqual(g.counts()[0], ("", [0, 2, 2]))
-        self.assertEqual(g.counts()[1], ("rp", [0, 0, 1]))
-        self.assertEqual(g.counts()[-1], ("rsrprsrp", [0, 0, 0]))
+        t = self.played([(0, 2), (0, 1), (0, 2), (0, 1)])
+        self.assertEqual(t.table[""], [0, 2, 2])
+        self.assertEqual(t.table["rs"], [0, 2, 0])
+        self.assertEqual(t.table["rp"], [0, 0, 1])
+        self.assertEqual(t.table["rsrp"], [0, 0, 1])
+        self.assertEqual(t.table["rprs"], [0, 1, 0])
+        self.assertEqual(t.table["rsrprs"], [0, 1, 0])
+        self.assertNotIn("rsrprsrp", t.table)  # the full history has no follower yet
+        self.assertEqual(t.counts()[0], ("", [0, 2, 2]))
+        self.assertEqual(t.counts()[1], ("rp", [0, 0, 1]))
+        self.assertEqual(t.counts()[-1], ("rsrprsrp", [0, 0, 0]))
+
+    def test_observe_is_idempotent_per_round(self):
+        t = GotchaTable()
+        me, opp = [0, 0], [2, 1]
+        t.observe(me[:1], opp[:1])
+        t.observe(me, opp)
+        t.observe(me, opp)  # a second depth predictor reporting the same round
+        self.assertEqual(t.rounds, 2)
+        self.assertEqual(t.table[""], [0, 1, 1])
 
     def test_max_rounds_caps_suffix_length(self):
-        g = Gotcha(max_rounds=2)
-        me, opp = [0, 0, 0, 0], [2, 1, 2, 1]
-        for i in range(1, 5):
-            g.observe(me[:i], opp[:i])
-        self.assertEqual(g.suffixes(), ["", "rp", "rsrp"])
-        self.assertEqual(g.table["rprs"], [0, 1, 0])
-        self.assertNotIn("rsrprs", g.table)
+        t = self.played([(0, 2), (0, 1), (0, 2), (0, 1)], max_rounds=2)
+        self.assertEqual(t.suffixes(), ["", "rp", "rsrp"])
+        self.assertEqual(t.table["rprs"], [0, 1, 0])
+        self.assertNotIn("rsrprs", t.table)
 
     def test_empty(self):
-        self.assertEqual(Gotcha().suffixes(), [""])
-        self.assertEqual(Gotcha().counts(), [("", [0, 0, 0])])
+        t = GotchaTable()
+        self.assertEqual(t.suffixes(), [""])
+        self.assertEqual(t.counts(), [("", [0, 0, 0])])
+
+    def test_best_response(self):
+        R, P, S = 0, 1, 2
+        self.assertIsNone(best_response([0, 0, 0]))
+        self.assertEqual(best_response([0, 3, 0]), S)   # they play paper: cut it
+        self.assertEqual(best_response([4, 3, 0]), P)   # mostly rock, some paper: paper
+        self.assertEqual(best_response([4, 0, 3]), R)   # rock beats scissors, ties rock, never loses
+        self.assertEqual(best_response([1, 1, 1]), R)   # all equal: lowest index
+
+    def test_depth_predictors_share_one_table(self):
+        preds = gotcha_predictors(max_rounds=3)
+        self.assertEqual([p.name for p in preds], ["gotcha0", "gotcha1", "gotcha2", "gotcha3"])
+        self.assertTrue(all(p.table is preds[0].table for p in preds))
+        me, opp = [], []
+        for mine, theirs in [(0, 1), (0, 1), (0, 1)]:  # opponent always paper
+            me.append(mine)
+            opp.append(theirs)
+            for p in preds:
+                p.observe(me, opp)
+        self.assertEqual(preds[0].table.table[""], [0, 3, 0])
+        self.assertEqual(preds[0].response(), 2)   # best response is scissors
+        self.assertEqual(preds[0].predict(me, opp), 1)  # expressed as "they play paper"
+        self.assertEqual(preds[1].response(), 2)   # "rp" seen twice, followed by paper
+        self.assertIsNone(preds[3].response())     # "rprprp" has never been followed

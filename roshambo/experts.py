@@ -123,9 +123,9 @@ Predictor = Ngram  # anything with .name, .observe(me, opp), .predict(me, opp)
 
 def default_predictors(max_depth: int = 5, decays: Sequence[float] = (1.0, 0.8)) -> list:
     """The standard ensemble: gotcha, frequency, and n-grams over every source/target/decay."""
-    from .gotcha import Gotcha
+    from .gotcha import gotcha_predictors
 
-    preds: list = [Gotcha()]
+    preds: list = gotcha_predictors()
     for decay in decays:
         for target in ("opp", "me"):
             preds.append(Ngram(0, "opp", target, decay))
