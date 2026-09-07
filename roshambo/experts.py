@@ -79,7 +79,7 @@ class Ngram:
 class Expert:
     """A predictor plus a rotation, with its own would-have-won record."""
 
-    def __init__(self, predictor: Ngram, rotation: int, score_decays: Sequence[float]):
+    def __init__(self, predictor, rotation: int, score_decays: Sequence[float]):
         self.predictor, self.rotation = predictor, rotation
         self.score_decays = tuple(score_decays)
         # One decayed would-have-won tally per horizon: a fast one to catch a
@@ -118,9 +118,14 @@ class Expert:
         self.pending = None
 
 
-def default_predictors(max_depth: int = 5, decays: Sequence[float] = (1.0, 0.8)) -> list[Ngram]:
-    """The standard ensemble: frequency plus n-grams over every source/target/decay."""
-    preds: list[Ngram] = []
+Predictor = Ngram  # anything with .name, .observe(me, opp), .predict(me, opp)
+
+
+def default_predictors(max_depth: int = 5, decays: Sequence[float] = (1.0, 0.8)) -> list:
+    """The standard ensemble: gotcha, frequency, and n-grams over every source/target/decay."""
+    from .gotcha import Gotcha
+
+    preds: list = [Gotcha()]
     for decay in decays:
         for target in ("opp", "me"):
             preds.append(Ngram(0, "opp", target, decay))

@@ -5,7 +5,7 @@ import random
 from typing import Sequence
 
 from .core import outcome
-from .experts import Expert, Ngram, default_predictors
+from .experts import Expert, default_predictors
 
 
 class Bot:
@@ -20,7 +20,7 @@ class Bot:
 
     def __init__(
         self,
-        predictors: Sequence[Ngram] | None = None,
+        predictors: Sequence | None = None,
         score_decays: Sequence[float] = (0.9, 0.99),
         epsilon: float = 0.0,
         seed: int | None = None,
@@ -82,6 +82,13 @@ class Bot:
     @property
     def rounds(self) -> int:
         return len(self.opp)
+
+    def predictor(self, cls):
+        """The bot's instance of a given predictor class, or None."""
+        for e in self.experts:
+            if isinstance(e.predictor, cls):
+                return e.predictor
+        return None
 
     def leaderboard(self, n: int = 10) -> list[Expert]:
         """Experts ranked by current (decayed) score."""

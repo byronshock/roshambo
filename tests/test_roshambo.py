@@ -3,6 +3,7 @@ import unittest
 
 from roshambo import Bot, beats, outcome, parse
 from roshambo.core import rotate
+from roshambo.gotcha import Gotcha
 from roshambo.opponents import ALL
 from roshambo.simulate import play_match, summarize
 
@@ -58,3 +59,19 @@ class BotTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GotchaTests(unittest.TestCase):
+    def test_history_and_suffixes(self):
+        g = Gotcha()
+        me, opp = [], []
+        for mine, theirs in [(1, 2), (0, 1), (0, 0), (2, 2)]:
+            me.append(mine)
+            opp.append(theirs)
+            g.observe(me, opp)
+        self.assertEqual(g.history, "psrprrss")
+        self.assertEqual(g.rounds, 4)
+        self.assertEqual(g.suffixes(), ["ss", "rrss", "rprrss", "psrprrss"])
+
+    def test_empty(self):
+        self.assertEqual(Gotcha().suffixes(), [])

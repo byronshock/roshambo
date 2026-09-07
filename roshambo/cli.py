@@ -6,11 +6,13 @@ import sys
 
 from .bot import Bot
 from .core import NAMES, parse
+from .gotcha import Gotcha
 from .simulate import run_all
 
 
 def play(bot: Bot) -> None:
     print("Rock, paper, scissors. Type r/p/s (q to quit). The bot is watching.\n")
+    gotcha = bot.predictor(Gotcha)
     while True:
         try:
             raw = input(f"[{bot.rounds + 1}] you> ")
@@ -29,6 +31,8 @@ def play(bot: Bot) -> None:
         why = f"  (via {bot.last_expert.name})" if bot.last_expert else "  (random)"
         print(f"   bot: {NAMES[mine]:8} -> {verdict}{why}")
         print(f"   score  bot {bot.wins}  you {bot.losses}  ties {bot.ties}")
+        if gotcha:
+            print(f"   gotcha {gotcha.history}: {' '.join(gotcha.suffixes())}")
     if bot.rounds:
         n = bot.rounds
         print(f"\n{n} rounds: bot {bot.wins} ({bot.wins/n:.0%})  you {bot.losses} ({bot.losses/n:.0%})  ties {bot.ties}")
