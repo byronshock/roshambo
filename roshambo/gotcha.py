@@ -48,10 +48,13 @@ class Gotcha:
         self.history += _CHAR[me[-1]] + _CHAR[opp[-1]]
 
     def suffixes(self) -> list[str]:
-        """Every whole-round suffix of the history, shortest first."""
+        """Every whole-round suffix of the history, shortest first.
+
+        Starts with the empty suffix, whose table entry counts the
+        opponent's moves regardless of context."""
         h = self.history
         longest = self.rounds if self.max_rounds is None else min(self.rounds, self.max_rounds)
-        return [h[len(h) - 2 * k :] for k in range(1, longest + 1)]
+        return [h[len(h) - 2 * k :] for k in range(0, longest + 1)]
 
     def counts(self) -> list[tuple[str, list[int]]]:
         """Each current suffix with its table entry, shortest first.
