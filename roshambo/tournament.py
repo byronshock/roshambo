@@ -15,11 +15,10 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from typing import Callable, Protocol, Sequence
 
-from .bot import Bot
+from .bot import Bot, make_bot
 from .classic import Greenberg, Iocaine
 from .core import outcome
-from .experts import default_predictors
-from .gotcha import gotcha_predictors
+from .experts import LINEUPS
 from .opponents import ALL as SCRIPTED
 
 
@@ -62,21 +61,16 @@ class ScriptedPlayer:
         self.opp.append(theirs)
 
 
-def _ngram_only(seed):
-    return [p for p in default_predictors(seed=seed) if not p.name.startswith("gotcha")]
-
-
 ENTRANTS: dict[str, Callable[[int], Player]] = {
-    "bot": lambda seed: BotPlayer(Bot(seed=seed)),
-    "gotcha": lambda seed: BotPlayer(Bot(predictors=gotcha_predictors(seed=seed), seed=seed)),
-    "ngram": lambda seed: BotPlayer(Bot(predictors=_ngram_only(seed), seed=seed)),
     "iocaine": lambda seed: ClassicPlayer(Iocaine()),
     "greenberg": lambda seed: ClassicPlayer(Greenberg()),
 }
+for _name in LINEUPS:
+    ENTRANTS[_name] = lambda seed, n=_name: BotPlayer(make_bot(n, seed=seed))
 for _name in ("uniform", "biased", "wsls", "beat_last", "freq_exploiter"):
     ENTRANTS[_name] = lambda seed, n=_name: ScriptedPlayer(SCRIPTED[n]())
 
-DEFAULT = ("bot", "gotcha", "ngram", "iocaine", "greenberg", "uniform", "wsls")
+DEFAULT = ("gotcha", "gotcha-rot", "ngram", "full", "iocaine", "greenberg", "uniform", "wsls")
 
 
 def play(a: Player, b: Player, rounds: int, seed: int) -> float:

@@ -4,7 +4,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .bot import Bot
+from .bot import Bot, make_bot
+from .experts import DEFAULT_LINEUP, LINEUPS
 from .core import NAMES, parse
 from .simulate import run_all
 from .tournament import DEFAULT, run as run_tournament
@@ -46,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seeds", type=int, default=5, help="matches per pairing in a tournament")
     ap.add_argument("--jobs", type=int, default=None, help="worker processes for a tournament (default: all cores)")
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--bot", choices=sorted(LINEUPS), default=DEFAULT_LINEUP, help="expert lineup to play against")
     ap.add_argument("--epsilon", type=float, default=0.0, help="random-move rate")
     ap.add_argument("--score-decays", type=float, nargs="+", default=(0.9, 0.99),
                     help="expert score memory horizons (0-1)")
@@ -55,9 +57,9 @@ def main(argv: list[str] | None = None) -> int:
         run_tournament(args.opponents or DEFAULT, args.rounds, args.seeds, jobs=args.jobs)
         return 0
     if args.sim:
-        run_all(args.rounds, seed=args.seed or 0, names=args.opponents or None)
+        run_all(args.rounds, seed=args.seed or 0, names=args.opponents or None, lineup=args.bot)
         return 0
-    play(Bot(seed=args.seed, epsilon=args.epsilon, score_decays=args.score_decays))
+    play(make_bot(args.bot, seed=args.seed, epsilon=args.epsilon, score_decays=args.score_decays))
     return 0
 
 

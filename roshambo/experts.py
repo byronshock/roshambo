@@ -18,6 +18,14 @@ from .core import beats, outcome, rotate
 Seq = Sequence[int]
 
 
+ALL_ROTATIONS = (0, 1, 2)
+
+
+def rotations_of(predictor) -> tuple[int, ...]:
+    """The rotations a predictor wants experts for; all three unless it says otherwise."""
+    return tuple(getattr(predictor, "rotations", ALL_ROTATIONS))
+
+
 class Ngram:
     """Context-conditioned move counts.
 
@@ -29,6 +37,8 @@ class Ngram:
               would play to beat it.
     decay   : per-observation multiplier on old counts (1.0 = never forget).
     """
+
+    rotations = ALL_ROTATIONS
 
     def __init__(self, depth: int, source: str, target: str, decay: float):
         assert source in ("opp", "me", "both") and target in ("opp", "me")
@@ -95,6 +105,8 @@ class Expert:
 
     @property
     def name(self) -> str:
+        if len(rotations_of(self.predictor)) == 1:
+            return self.predictor.name
         return f"{self.predictor.name} rot{self.rotation}"
 
     def propose(self, me: Seq, opp: Seq) -> int | None:
@@ -118,18 +130,9 @@ class Expert:
         self.pending = None
 
 
-Predictor = Ngram  # anything with .name, .observe(me, opp), .predict(me, opp)
-
-
-def default_predictors(
-    max_depth: int = 5, decays: Sequence[float] = (1.0, 0.8), seed: int | None = None
-) -> list:
-    """The standard ensemble: gotcha, frequency, and n-grams over every source/target/decay.
-
-    `seed` fixes gotcha's probability-matching draws."""
-    from .gotcha import gotcha_predictors
-
-    preds: list = gotcha_predictors(seed=seed)
+def ngram_predictors(max_depth: int = 5, decays: Sequence[float] = (1.0, 0.8)) -> list[Ngram]:
+    """Frequency plus n-grams over every source/target/decay, each with all three rotations."""
+    preds: list[Ngram] = []
     for decay in decays:
         for target in ("opp", "me"):
             preds.append(Ngram(0, "opp", target, decay))
@@ -137,3 +140,29 @@ def default_predictors(
                 for source in ("opp", "me", "both"):
                     preds.append(Ngram(depth, source, target, decay))
     return preds
+
+
+def _gotcha(seed, rotations):
+    from .gotcha import gotcha_predictors
+
+    return gotcha_predictors(seed=seed, rotations=rotations)
+
+
+LINEUPS = {
+    "gotcha": lambda seed: _gotcha(seed, (0,)),
+    "gotcha-rot": lambda seed: _gotcha(seed, ALL_ROTATIONS),
+    "ngram": lambda seed: ngram_predictors(),
+    "full": lambda seed: _gotcha(seed, ALL_ROTATIONS) + ngram_predictors(),
+}
+"""Named predictor lineups, each a function of the seed for gotcha's draws.
+
+gotcha      the default: one expert per gotcha depth, playing its draw straight
+gotcha-rot  gotcha depths with the three second-guessing rotations
+ngram       the n-gram and frequency experts only
+full        gotcha-rot plus ngram, the original ensemble
+"""
+DEFAULT_LINEUP = "gotcha"
+
+
+def default_predictors(seed: int | None = None) -> list:
+    return LINEUPS[DEFAULT_LINEUP](seed)

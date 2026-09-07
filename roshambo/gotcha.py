@@ -77,10 +77,14 @@ class GotchaTable:
 
 
 class Gotcha:
-    """The depth-k gotcha predictor over a shared table."""
+    """The depth-k gotcha predictor over a shared table.
 
-    def __init__(self, table: GotchaTable, depth: int) -> None:
+    `rotations` says which second-guessing experts to build on it. The
+    default is rotation 0 only: play what beats the draw, nothing cleverer."""
+
+    def __init__(self, table: GotchaTable, depth: int, rotations: Sequence[int] = (0,)) -> None:
         self.table, self.depth = table, depth
+        self.rotations = tuple(rotations)
 
     @property
     def name(self) -> str:
@@ -97,7 +101,9 @@ class Gotcha:
         return self.table.rng.choices((0, 1, 2), weights=est)[0]
 
 
-def gotcha_predictors(max_rounds: int = 10, seed: int | None = None) -> list[Gotcha]:
+def gotcha_predictors(
+    max_rounds: int = 10, seed: int | None = None, rotations: Sequence[int] = (0,)
+) -> list[Gotcha]:
     """One predictor per depth, all sharing one table."""
     table = GotchaTable(max_rounds, random.Random(seed))
-    return [Gotcha(table, k) for k in range(max_rounds + 1)]
+    return [Gotcha(table, k, rotations) for k in range(max_rounds + 1)]

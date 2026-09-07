@@ -5,11 +5,13 @@ import random
 from typing import Sequence
 
 from .core import outcome
-from .experts import Expert, default_predictors
+from .experts import LINEUPS, Expert, default_predictors, rotations_of
 
 
 class Bot:
     """Call `move()` to get the bot's play, then `observe(opp_move)` with the reply.
+
+    predictors  : the expert lineup; defaults to gotcha alone (see experts.LINEUPS).
 
     score_decays: horizons over which an expert's would-have-won record is
                   kept (0.9 ≈ ten rounds, 0.99 ≈ a hundred). Experts are
@@ -28,7 +30,7 @@ class Bot:
         self.rng = random.Random(seed)
         self.epsilon = epsilon
         preds = list(predictors) if predictors is not None else default_predictors(seed=seed)
-        self.experts = [Expert(p, k, score_decays) for p in preds for k in range(3)]
+        self.experts = [Expert(p, k, score_decays) for p in preds for k in rotations_of(p)]
         self.me: list[int] = []
         self.opp: list[int] = []
         self.wins = self.losses = self.ties = 0
@@ -65,7 +67,7 @@ class Bot:
             e.settle(opp_move)
         seen: set[int] = set()
         for e in self.experts:
-            if id(e.predictor) not in seen:  # each predictor is shared by 3 experts
+            if id(e.predictor) not in seen:  # a predictor may back several experts
                 seen.add(id(e.predictor))
                 e.predictor.observe(self.me, self.opp)
         r = outcome(mine, opp_move)
@@ -93,3 +95,8 @@ class Bot:
     def leaderboard(self, n: int = 10) -> list[Expert]:
         """Experts ranked by current (decayed) score."""
         return sorted(self.experts, key=lambda e: e.score, reverse=True)[:n]
+
+
+def make_bot(lineup: str = "gotcha", seed: int | None = None, **kwargs) -> Bot:
+    """A bot with a named predictor lineup from experts.LINEUPS."""
+    return Bot(predictors=LINEUPS[lineup](seed), seed=seed, **kwargs)

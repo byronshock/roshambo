@@ -6,6 +6,18 @@ finds the tells.
 
 ## How it works
 
+The default bot is **gotcha**: eleven experts, one per context depth
+from 0 to 10, over a shared history-matching table (see
+`roshambo/gotcha.py`). Each keeps add-one smoothed counts of what the
+opponent played after the last *k* rounds, draws a move from that
+estimate, and plays what beats the draw. The meta-selector below chooses
+which depth is reading the opponent best.
+
+The other lineups, selectable with `--bot` and as tournament entrants,
+add the machinery below: `gotcha-rot` gives gotcha the three
+second-guessing rotations, `ngram` is the n-gram ensemble alone, and
+`full` is both together.
+
 - **Predictors** are n-gram tables: given the last *k* rounds (from the
   opponent's moves, the bot's own moves, or both), what came next? Depth 0
   is plain frequency. Each table exists in a never-forget and a
@@ -43,15 +55,15 @@ access to fetch the C sources, which are not redistributed here).
 python3 -m roshambo --tournament --rounds 1000 --seeds 5
 ```
 
-Round-robin crosstable between entrants: the full bot, gotcha alone, the
-n-gram experts alone, Iocaine Powder, Greenberg, and scripted baselines.
+Round-robin crosstable between entrants: the four lineups, Iocaine
+Powder, Greenberg, and scripted baselines.
 Each cell is the row entrant's mean margin over the column entrant in
 percentage points, with an approximate 95% interval across seeds, and
 rows are ranked by average margin. Matches run in parallel across all
 cores (`--jobs N` to limit). Name entrants to pick a subset:
 
 ```bash
-python3 -m roshambo --tournament bot iocaine greenberg --seeds 10
+python3 -m roshambo --tournament gotcha full iocaine greenberg --seeds 10
 ```
 
 ## Play it

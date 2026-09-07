@@ -3,6 +3,7 @@ import statistics
 import unittest
 
 from roshambo import Bot, beats, outcome, parse
+from roshambo.bot import make_bot
 from roshambo.classic import Greenberg, Iocaine
 from roshambo.core import rotate
 from roshambo.gotcha import GotchaTable, gotcha_predictors
@@ -36,17 +37,36 @@ class BotTests(unittest.TestCase):
         for rate in (w, t, l):
             self.assertAlmostEqual(rate, 1 / 3, delta=0.03)
 
-    def test_exploits_simple_patterns(self):
-        for name in ("constant", "cycle", "beat_last", "copy_last", "wsls", "freq_exploiter"):
+    def test_default_is_gotcha_without_rotations(self):
+        names = [e.name for e in Bot(seed=0).experts]
+        self.assertEqual(names, [f"gotcha{k}" for k in range(11)])
+        full = [e.name for e in make_bot("full", seed=0).experts]
+        self.assertIn("gotcha2 rot1", full)
+        self.assertIn("freq[opp]d1 rot2", full)
+
+    def test_gotcha_exploits_simple_patterns(self):
+        for name in ("constant", "cycle", "beat_last", "copy_last", "wsls"):
             with self.subTest(name):
                 bot = play_match(ALL[name](), 500, seed=3)
                 w, _, _ = summarize(bot)
                 self.assertGreater(w, 0.85, f"{name}: win rate {w:.2f}")
+        # Probability matching only partly punishes an opponent reacting to the bot's frequencies.
+        w, _, l = summarize(play_match(ALL["freq_exploiter"](), 500, seed=3))
+        self.assertGreater(w - l, 0.3)
+
+    def test_full_ensemble_exploits_simple_patterns(self):
+        for name in ("constant", "cycle", "beat_last", "copy_last", "wsls", "freq_exploiter"):
+            with self.subTest(name):
+                bot = play_match(ALL[name](), 500, seed=3, lineup="full")
+                w, _, _ = summarize(bot)
+                self.assertGreater(w, 0.85, f"{name}: win rate {w:.2f}")
 
     def test_exploits_bias(self):
-        bot = play_match(ALL["biased"](), 3000, seed=5)
-        w, _, l = summarize(bot)
+        # Greedy experts take most of the 30-point ceiling; probability matching takes a slice.
+        w, _, l = summarize(play_match(ALL["biased"](), 3000, seed=5, lineup="full"))
         self.assertGreater(w - l, 0.15)
+        w, _, l = summarize(play_match(ALL["biased"](), 3000, seed=5))
+        self.assertGreater(w - l, 0.02)
 
     def test_self_play_is_balanced(self):
         bot = play_match(ALL["self"](), 3000, seed=9)
@@ -172,19 +192,19 @@ class ClassicBotTests(unittest.TestCase):
 
 class TournamentTests(unittest.TestCase):
     def test_crosstable_is_antisymmetric_and_ranks(self):
-        names = ("bot", "wsls", "uniform")
+        names = ("full", "wsls", "uniform")
         results = tournament.crosstable(names, rounds=150, seeds=2)
         for a in names:
             for b in names:
                 if a != b:
                     self.assertEqual(len(results[(a, b)]), 2)
                     self.assertEqual(results[(a, b)], [-m for m in results[(b, a)]])
-        self.assertGreater(statistics.fmean(results[("bot", "wsls")]), 0.8)
+        self.assertGreater(statistics.fmean(results[("full", "wsls")]), 0.8)
         text = tournament.report(names, results, 150, 2)
-        self.assertTrue(text.splitlines()[3].startswith("bot"))  # ranked first
+        self.assertTrue(text.splitlines()[3].startswith("full"))  # ranked first
 
     def test_parallel_matches_serial(self):
-        names = ("bot", "iocaine", "uniform")
+        names = ("gotcha", "iocaine", "uniform")
         serial = tournament.crosstable(names, rounds=120, seeds=2, jobs=1)
         parallel = tournament.crosstable(names, rounds=120, seeds=2, jobs=3)
         self.assertEqual(serial, parallel)

@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import random
 
-from .bot import Bot
+from .bot import Bot, make_bot
 from .opponents import ALL, Opponent
 
 
-def play_match(opponent: Opponent, rounds: int, seed: int = 0, **bot_kwargs) -> Bot:
-    bot = Bot(seed=seed, **bot_kwargs)
+def play_match(opponent: Opponent, rounds: int, seed: int = 0, lineup: str | None = None, **bot_kwargs) -> Bot:
+    bot = make_bot(lineup, seed=seed, **bot_kwargs) if lineup else Bot(seed=seed, **bot_kwargs)
     rng = random.Random(seed + 1)
     for _ in range(rounds):
         mine = bot.move()
@@ -22,10 +22,10 @@ def summarize(bot: Bot) -> tuple[float, float, float]:
     return bot.wins / n, bot.ties / n, bot.losses / n
 
 
-def run_all(rounds: int = 1000, seed: int = 0, names: list[str] | None = None) -> None:
+def run_all(rounds: int = 1000, seed: int = 0, names: list[str] | None = None, lineup: str = "gotcha") -> None:
     names = names or list(ALL)
-    print(f"{'opponent':16} {'win':>6} {'tie':>6} {'loss':>6}   ({rounds} rounds)")
+    print(f"{'opponent':16} {'win':>6} {'tie':>6} {'loss':>6}   ({lineup}, {rounds} rounds)")
     for name in names:
-        bot = play_match(ALL[name](), rounds, seed=seed)
+        bot = play_match(ALL[name](), rounds, seed=seed, lineup=lineup)
         w, t, l = summarize(bot)
         print(f"{name:16} {w:6.1%} {t:6.1%} {l:6.1%}")
