@@ -44,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tournament", action="store_true", help="round-robin crosstable between entrants")
     ap.add_argument("--rounds", type=int, default=1000, help="rounds per simulated match")
     ap.add_argument("--seeds", type=int, default=5, help="matches per pairing in a tournament")
+    ap.add_argument("--jobs", type=int, default=None, help="worker processes for a tournament (default: all cores)")
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--epsilon", type=float, default=0.0, help="random-move rate")
     ap.add_argument("--score-decays", type=float, nargs="+", default=(0.9, 0.99),
@@ -51,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("opponents", nargs="*", help="opponents for --sim, or entrants for --tournament")
     args = ap.parse_args(argv)
     if args.tournament:
-        run_tournament(args.opponents or DEFAULT, args.rounds, args.seeds)
+        run_tournament(args.opponents or DEFAULT, args.rounds, args.seeds, jobs=args.jobs)
         return 0
     if args.sim:
         run_all(args.rounds, seed=args.seed or 0, names=args.opponents or None)

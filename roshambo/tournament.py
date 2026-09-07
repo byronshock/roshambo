@@ -8,9 +8,11 @@ tournaments ranked their "open" division.
 """
 from __future__ import annotations
 
+import os
 import random
 import statistics
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from typing import Callable, Protocol, Sequence
 
 from .bot import Bot
@@ -91,19 +93,42 @@ def play(a: Player, b: Player, rounds: int, seed: int) -> float:
     return (wins - losses) / rounds
 
 
+def _match(job: tuple[str, int, str, int, int, int]) -> tuple[str, str, int, float]:
+    """One seeded match, picklable so it can run in a worker process."""
+    a, i, b, j, rounds, s = job
+    return a, b, s, play(ENTRANTS[a](1000 * s + i), ENTRANTS[b](1000 * s + j), rounds, seed=s)
+
+
 def crosstable(
-    names: Sequence[str], rounds: int, seeds: int, progress: Callable[[str], None] | None = None
+    names: Sequence[str],
+    rounds: int,
+    seeds: int,
+    progress: Callable[[str], None] | None = None,
+    jobs: int | None = None,
 ) -> dict[tuple[str, str], list[float]]:
-    """Margins for every ordered pair, one per seed. Antisymmetric by construction."""
+    """Margins for every ordered pair, one per seed. Antisymmetric by construction.
+
+    Matches are independent and run across `jobs` processes (default: all
+    cores). Results are identical whatever the job count."""
+    work = [
+        (a, i, names[j], j, rounds, s)
+        for i, a in enumerate(names)
+        for j in range(i + 1, len(names))
+        for s in range(seeds)
+    ]
+    jobs = jobs or os.cpu_count() or 1
+    if jobs > 1 and len(work) > 1:
+        with ProcessPoolExecutor(max_workers=min(jobs, len(work))) as pool:
+            outcomes = list(pool.map(_match, work, chunksize=1))
+    else:
+        outcomes = [_match(w) for w in work]
     results: dict[tuple[str, str], list[float]] = defaultdict(list)
-    for i, a in enumerate(names):
-        for j in range(i + 1, len(names)):
-            b = names[j]
-            for s in range(seeds):
-                m = play(ENTRANTS[a](1000 * s + i), ENTRANTS[b](1000 * s + j), rounds, seed=s)
-                results[(a, b)].append(m)
-                results[(b, a)].append(-m)
-            if progress:
+    for a, b, s, m in outcomes:  # seed order within a pair is preserved by map()
+        results[(a, b)].append(m)
+        results[(b, a)].append(-m)
+    if progress:
+        for i, a in enumerate(names):
+            for b in names[i + 1 :]:
                 progress(f"{a} vs {b}: {statistics.fmean(results[(a, b)]):+.3f}")
     return results
 
@@ -140,11 +165,17 @@ def report(names: Sequence[str], results: dict[tuple[str, str], list[float]], ro
     return "\n".join(lines)
 
 
-def run(names: Sequence[str] = DEFAULT, rounds: int = 1000, seeds: int = 5, verbose: bool = True) -> str:
+def run(
+    names: Sequence[str] = DEFAULT,
+    rounds: int = 1000,
+    seeds: int = 5,
+    verbose: bool = True,
+    jobs: int | None = None,
+) -> str:
     unknown = [n for n in names if n not in ENTRANTS]
     if unknown:
         raise SystemExit(f"unknown entrants {unknown}; choose from {sorted(ENTRANTS)}")
-    results = crosstable(names, rounds, seeds, progress=print if verbose else None)
+    results = crosstable(names, rounds, seeds, progress=print if verbose else None, jobs=jobs)
     text = report(names, results, rounds, seeds)
     if verbose:
         print()

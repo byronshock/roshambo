@@ -47,7 +47,8 @@ Round-robin crosstable between entrants: the full bot, gotcha alone, the
 n-gram experts alone, Iocaine Powder, Greenberg, and scripted baselines.
 Each cell is the row entrant's mean margin over the column entrant in
 percentage points, with an approximate 95% interval across seeds, and
-rows are ranked by average margin. Name entrants to pick a subset:
+rows are ranked by average margin. Matches run in parallel across all
+cores (`--jobs N` to limit). Name entrants to pick a subset:
 
 ```bash
 python3 -m roshambo --tournament bot iocaine greenberg --seeds 10

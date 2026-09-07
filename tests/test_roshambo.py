@@ -183,6 +183,12 @@ class TournamentTests(unittest.TestCase):
         text = tournament.report(names, results, 150, 2)
         self.assertTrue(text.splitlines()[3].startswith("bot"))  # ranked first
 
+    def test_parallel_matches_serial(self):
+        names = ("bot", "iocaine", "uniform")
+        serial = tournament.crosstable(names, rounds=120, seeds=2, jobs=1)
+        parallel = tournament.crosstable(names, rounds=120, seeds=2, jobs=3)
+        self.assertEqual(serial, parallel)
+
     def test_every_entrant_constructs_and_plays(self):
         for name, make in tournament.ENTRANTS.items():
             with self.subTest(name):
