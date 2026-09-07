@@ -6,6 +6,7 @@ import random
 from collections import Counter
 from typing import Callable, Sequence
 
+from .classic import Greenberg, Iocaine
 from .core import beats
 
 Opponent = Callable[[Sequence[int], Sequence[int], random.Random], int]
@@ -68,6 +69,18 @@ def bot_opponent(**kwargs) -> Opponent:
     return play
 
 
+def classic(cls) -> Opponent:
+    """One of the ported tournament bots (roshambo.classic). Stateful; build one per match."""
+    bot = cls()
+
+    def play(me, opp, rng):
+        if bot.rounds < len(me):  # settle the previous round first
+            bot.observe(me[-1], opp[-1])
+        return bot.move(rng.randrange(3))
+
+    return play
+
+
 ALL: dict[str, Callable[[], Opponent]] = {
     "uniform": lambda: uniform,
     "constant": lambda: constant(0),
@@ -78,4 +91,6 @@ ALL: dict[str, Callable[[], Opponent]] = {
     "freq_exploiter": lambda: frequency_exploiter,
     "biased": lambda: biased((0.5, 0.3, 0.2)),
     "self": lambda: bot_opponent(seed=12345),
+    "iocaine": lambda: classic(Iocaine),
+    "greenberg": lambda: classic(Greenberg),
 }

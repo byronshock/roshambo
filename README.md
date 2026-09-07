@@ -23,6 +23,20 @@ finds the tells.
 
 No dependencies beyond the standard library.
 
+## Classic opponents
+
+`roshambo/classic/` holds Python ports of the two RoShamBo tournament
+winners, Dan Egnor's Iocaine Powder (1999) and Andrzej Nagorko's Greenberg
+(2000), usable as opponents by name:
+
+```bash
+python3 -m roshambo --sim --rounds 1000 iocaine greenberg
+```
+
+The ports were checked move for move against the C originals; rerun that
+check with `python3 tools/verify_classic/verify.py` (needs gcc and network
+access to fetch the C sources, which are not redistributed here).
+
 ## Play it
 
 ```bash

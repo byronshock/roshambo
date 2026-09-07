@@ -2,6 +2,7 @@ import random
 import unittest
 
 from roshambo import Bot, beats, outcome, parse
+from roshambo.classic import Greenberg, Iocaine
 from roshambo.core import rotate
 from roshambo.gotcha import Gotcha, GotchaTable, best_response, gotcha_predictors
 from roshambo.opponents import ALL
@@ -159,3 +160,37 @@ class GotchaTests(unittest.TestCase):
         self.assertEqual(preds[0].predict(me, opp), 1)  # expressed as "they play paper"
         self.assertEqual(preds[1].response(), 2)   # "rp" seen twice, followed by paper
         self.assertEqual(preds[3].response(), 2)   # "rprprp" unseen: inherits depth 2's belief
+
+
+class ClassicBotTests(unittest.TestCase):
+    """The ports are verified move-for-move against the C originals by
+    tools/verify_classic/verify.py; these are cheap behavioural checks."""
+
+    @staticmethod
+    def play(cls, opponent, rounds, seed=0):
+        bot, rng, wins = cls(), random.Random(seed), 0
+        me, opp = [], []
+        for _ in range(rounds):
+            mine = bot.move(rng.randrange(3))
+            theirs = opponent(opp, me, rng)
+            bot.observe(mine, theirs)
+            me.append(mine)
+            opp.append(theirs)
+            wins += (mine - theirs) % 3 == 1
+        return wins / rounds
+
+    def test_ports_exploit_simple_patterns(self):
+        for cls in (Iocaine, Greenberg):
+            for name in ("cycle", "beat_last", "wsls"):
+                with self.subTest(bot=cls.__name__, opponent=name):
+                    self.assertGreater(self.play(cls, ALL[name](), 300), 0.85)
+
+    def test_ports_are_deterministic_given_guesses(self):
+        for cls in (Iocaine, Greenberg):
+            a = [self.play(cls, ALL["uniform"](), 100, seed=4) for _ in range(2)]
+            self.assertEqual(a[0], a[1])
+
+    def test_ports_register_as_opponents(self):
+        for name in ("iocaine", "greenberg"):
+            bot = play_match(ALL[name](), 60, seed=2)
+            self.assertEqual(bot.rounds, 60)
