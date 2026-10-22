@@ -1,0 +1,114 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f6f2;
+  --fg: #1d1d1f;
+  --muted: #6b6b70;
+  --line: #d9d7cf;
+  --button: #ffffff;
+  --button-hover: #efede6;
+  --you: #b4235a;
+  --bot: #1f5fae;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17171c;
+    --fg: #e8e8ea;
+    --muted: #9a9aa2;
+    --line: #34343c;
+    --button: #22222a;
+    --button-hover: #2c2c36;
+    --you: #ff8fb1;
+    --bot: #8fb8ff;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 3rem 16px;
+  text-align: center;
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-weight: 300;
+  font-size: 2rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.lede { color: var(--muted); margin: 0 0 2rem; }
+
+.moves {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--button);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: var(--button-hover); }
+button:focus-visible { outline: 2px solid var(--bot); outline-offset: 2px; }
+button:disabled { cursor: default; opacity: 0.55; }
+
+.moves button {
+  flex: 1 1 0;
+  max-width: 9.5rem;
+  padding: 0.9rem 0.5rem;
+  font-size: 1.15rem;
+}
+
+kbd {
+  margin-left: 0.4em;
+  padding: 0 0.35em;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: 0.75em ui-monospace, monospace;
+  color: var(--muted);
+}
+
+/* A touch screen has no R, P and S keys to press. */
+@media (hover: none) {
+  kbd { display: none; }
+}
+
+.round { min-height: 3em; margin: 1.5rem 0 1rem; }
+.round .win { color: var(--you); font-weight: 600; }
+.round .lose { color: var(--bot); font-weight: 600; }
+.round .tie { color: var(--muted); font-weight: 600; }
+
+.score {
+  display: flex;
+  justify-content: center;
+  gap: 2.5rem;
+  margin: 0;
+}
+
+.score dt { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.score dd { margin: 0; font-size: 2rem; font-variant-numeric: tabular-nums; }
+.score .you dd { color: var(--you); }
+.score .bot dd { color: var(--bot); }
+
+.count { color: var(--muted); font-size: 0.9rem; margin: 0.25rem 0 0; }
+
+.note { min-height: 1.5em; color: var(--muted); font-size: 0.9rem; }
+
+.new { padding: 0.4rem 1rem; font-size: 0.9rem; }

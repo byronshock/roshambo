@@ -74,6 +74,31 @@ python3 -m roshambo
 
 Type `r`, `p`, or `s`. `q` quits and prints which experts read you best.
 
+## Play it in a browser
+
+```bash
+python3 -m roshambo.web
+```
+
+Then open http://127.0.0.1:8777/ and press R, P or S, or click. The
+server (`roshambo/web.py`, standard library only) keeps one gotcha bot
+per game in memory, so the bot learns across rounds just as it does in
+the terminal. The page keeps its game id in a JavaScript variable, not a
+cookie or browser storage, so a reload starts a new game. A game ends
+after 1000 rounds, and one left idle for half an hour is dropped.
+
+It runs at https://roshambo.docshock.studio, on the server shared with
+docshock.studio, behind Cloudflare and Caddy:
+
+```bash
+deploy/deploy.sh        # dry run: tests HEAD, shows every change
+deploy/deploy.sh --go   # publishes HEAD
+```
+
+`deploy/roshambo-web.service` runs the game as a sandboxed systemd
+service on localhost; `deploy/roshambo.caddy` is the Caddy site. Edit
+both here, never on the server. A restart ends the games in progress.
+
 ## Evaluate it
 
 ```bash

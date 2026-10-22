@@ -1,0 +1,22 @@
+# roshambo.docshock.studio: the web game, on the Contabo server it shares with docshock.studio,
+# purelyfreefonts.com and walnutbutter.ai.
+#
+# Edit it here, never on the server: deploy/deploy.sh --go puts it at /etc/caddy/sites/roshambo.caddy
+# and reloads Caddy, and if Caddy refuses it, puts the old one back. The server's main Caddyfile
+# (the purelyfreefonts repo's ops/Caddyfile) imports it, and its global options (which Cloudflare
+# addresses to trust for the visitor's IP) apply here too.
+#
+# Cloudflare proxies the hostname and holds the public certificate. Caddy uses docshock.studio's
+# Cloudflare Origin CA certificate, which also names *.docshock.studio, so it never asks Let's
+# Encrypt for one. The server's firewall lets in only Cloudflare, so the DNS record has to be
+# proxied (orange cloud).
+#
+# The game (roshambo/web.py, run by deploy/roshambo-web.service on localhost only) sets its own
+# security headers and caching, and marks every response no-transform, so Cloudflare changes nothing
+# on the way. Visits aren't logged, here or by the game.
+
+roshambo.docshock.studio {
+	tls /etc/caddy/certs/docshock.pem /etc/caddy/certs/docshock.key
+	header -Server
+	reverse_proxy 127.0.0.1:8777
+}

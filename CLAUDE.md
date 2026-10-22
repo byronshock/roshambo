@@ -33,6 +33,9 @@ python3 -m unittest discover -s tests          # a few seconds, must stay green
 python3 -m roshambo --sim --rounds 2000        # bot vs scripted opponents
 python3 -m roshambo --tournament               # crosstable, ~5 s on many cores
 python3 -m roshambo --tournament gotcha full iocaine greenberg --rounds 5000 --seeds 10
+python3 -m roshambo.web                        # the browser game on http://127.0.0.1:8777/
+deploy/deploy.sh                               # dry run of publishing HEAD to roshambo.docshock.studio
+deploy/deploy.sh --go                          # publish: only when the owner says so
 ```
 
 ## Invariants the tests enforce
@@ -56,4 +59,10 @@ python3 -m roshambo --tournament gotcha full iocaine greenberg --rounds 5000 --s
 - `roshambo/opponents.py` scripted opponents, keyed by name in `ALL`
 - `roshambo/tournament.py` round-robin crosstable, parallel by default
 - `roshambo/classic/` Iocaine Powder and Greenberg ports
+- `roshambo/web.py` the browser game: one default-lineup bot per game,
+  in memory; page in `roshambo/static/` (no inline script or style,
+  the CSP forbids it)
+- `deploy/` the systemd unit, Caddy site and deploy script for
+  roshambo.docshock.studio, on the shared server (`ssh tff`) behind
+  Cloudflare; the server's baseline lives in the purelyfreefonts repo
 - `tools/verify_classic/` harness that diffs the ports against the C

@@ -1,0 +1,49 @@
+# /etc/systemd/system/roshambo-web.service: the web game behind roshambo.docshock.studio.
+# Edit it here, never on the server: deploy/deploy.sh --go installs it.
+#
+# It runs the roshambo package that deploy.sh copies to /srv/roshambo.docshock.studio, as a
+# throwaway user (DynamicUser) that can read the code and write nothing, and that can reach only
+# localhost, where Caddy (deploy/roshambo.caddy) is its one client. Games live in memory, so a
+# restart ends every game in progress; the page starts a new one and says so.
+
+[Unit]
+Description=roshambo web game (roshambo.docshock.studio)
+After=network.target
+
+[Service]
+WorkingDirectory=/srv/roshambo.docshock.studio
+ExecStart=/usr/bin/python3 -m roshambo.web --host 127.0.0.1 --port 8777
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=2
+# A full game is about 1.4 MB at worst, and roshambo/web.py holds at most 500 of them.
+MemoryMax=1G
+
+DynamicUser=yes
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

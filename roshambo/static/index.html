@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roshambo</title>
+<meta name="description" content="Rock, paper, scissors against a bot that learns how you play.">
+<link rel="stylesheet" href="/play.css">
+<script src="/play.js" defer></script>
+</head>
+<body>
+<main>
+  <h1>Roshambo</h1>
+  <p class="lede">Rock, paper, scissors against a bot that learns how you play.
+    Against pure chance it can win only a third of the time. Against a person, it looks for the tells.</p>
+
+  <div class="moves" role="group" aria-label="Your move">
+    <button type="button" data-move="r" aria-keyshortcuts="r" disabled>Rock <kbd>R</kbd></button>
+    <button type="button" data-move="p" aria-keyshortcuts="p" disabled>Paper <kbd>P</kbd></button>
+    <button type="button" data-move="s" aria-keyshortcuts="s" disabled>Scissors <kbd>S</kbd></button>
+  </div>
+
+  <p class="round" id="round" aria-live="polite">Your move.</p>
+
+  <dl class="score">
+    <div class="you"><dt>You</dt><dd id="you">0</dd></div>
+    <div class="ties"><dt>Ties</dt><dd id="ties">0</dd></div>
+    <div class="bot"><dt>Bot</dt><dd id="bot">0</dd></div>
+  </dl>
+  <p class="count" id="count">Round 0</p>
+
+  <p class="note" id="note" role="status"></p>
+
+  <p><button type="button" class="new" id="new" disabled>New game</button></p>
+
+  <noscript><p class="note">The game needs JavaScript: the bot plays on the server, and the page sends it your moves.</p></noscript>
+</main>
+</body>
+</html>
